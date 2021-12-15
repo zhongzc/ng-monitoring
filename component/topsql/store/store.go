@@ -17,7 +17,7 @@ import (
 
 var (
 	vminsertHandler http.HandlerFunc
-	documentDB      *genji.DB
+	mWriter *metaWriter
 
 	bytesP         = utils.BytesBufferPool{}
 	headerP        = utils.HeaderPool{}
@@ -27,41 +27,20 @@ var (
 
 func Init(vminsertHandler_ http.HandlerFunc, documentDB *genji.DB) {
 	vminsertHandler = vminsertHandler_
-	if err := initDocumentDB(documentDB); err != nil {
-		log.Fatal("failed to create tables", zap.Error(err))
+
+	mw, err := newMetaWriter(documentDB)
+	if err != nil {
+		log.Fatal("failed to create the meta writer", zap.Error(err))
 	}
-}
-
-func initDocumentDB(db *genji.DB) error {
-	documentDB = db
-
-	createTableStmts := []string{
-		"CREATE TABLE IF NOT EXISTS sql_digest (digest VARCHAR(255) PRIMARY KEY)",
-		"CREATE TABLE IF NOT EXISTS plan_digest (digest VARCHAR(255) PRIMARY KEY)",
-		"CREATE TABLE IF NOT EXISTS instance (instance VARCHAR(255) PRIMARY KEY)",
-	}
-
-	for _, stmt := range createTableStmts {
-		if err := db.Exec(stmt); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	mWriter = mw
 }
 
 func Stop() {
-
+	mWriter.stop()
 }
 
 func Instance(instance, instanceType string) error {
-	prepareStmt := "INSERT INTO instance(instance, instance_type) VALUES (?, ?) ON CONFLICT DO NOTHING"
-	prepare, err := documentDB.Prepare(prepareStmt)
-	if err != nil {
-		return err
-	}
-
-	return prepare.Exec(instance, instanceType)
+	return mWriter.syncWriteInstance(instance, instanceType)
 }
 
 func TopSQLRecord(instance, instanceType string, record *tipb.CPUTimeRecord) error {
@@ -81,37 +60,11 @@ func ResourceMeteringRecord(
 }
 
 func SQLMeta(meta *tipb.SQLMeta) error {
-	prepareStmt := "INSERT INTO sql_digest(digest, sql_text, is_internal) VALUES (?, ?, ?) ON CONFLICT DO NOTHING"
-	prepare, err := documentDB.Prepare(prepareStmt)
-	if err != nil {
-		return err
-	}
-
-	return prepare.Exec(hex.EncodeToString(meta.SqlDigest), meta.NormalizedSql, meta.IsInternalSql)
+	return mWriter.asyncWriteSQLMeta(meta)
 }
 
 func PlanMeta(meta *tipb.PlanMeta) error {
-	prepareStmt := "INSERT INTO plan_digest(digest, plan_text) VALUES (?, ?) ON CONFLICT DO NOTHING"
-	prepare, err := documentDB.Prepare(prepareStmt)
-	if err != nil {
-		return err
-	}
-
-	return prepare.Exec(hex.EncodeToString(meta.PlanDigest), meta.NormalizedPlan)
-}
-
-func insert(
-	header string, // INSERT INTO {table}({fields}...) VALUES
-	elem string, times int, // (?, ?, ... , ?), (?, ?, ... , ?), ... (?, ?, ... , ?)
-	footer string, // ON CONFLICT DO NOTHING
-	fill func(target *[]interface{}),
-) error {
-	if times == 0 {
-		log.Fatal("unexpected zero times", zap.Int("times", times))
-	}
-
-	prepareStmt := buildPrepareStmt(header, elem, times, footer)
-	return execStmt(prepareStmt, fill)
+	return mWriter.asyncWritePlanMeta(meta)
 }
 
 func buildPrepareStmt(header string, elem string, times int, footer string) string {
@@ -127,19 +80,6 @@ func buildPrepareStmt(header string, elem string, times int, footer string) stri
 	sb.WriteString(footer)
 
 	return sb.String()
-}
-
-func execStmt(prepareStmt string, fill func(target *[]interface{})) error {
-	stmt, err := documentDB.Prepare(prepareStmt)
-	if err != nil {
-		return err
-	}
-
-	ps := prepareSliceP.Get()
-	defer prepareSliceP.Put(ps)
-
-	fill(ps)
-	return stmt.Exec(*ps...)
 }
 
 // transform tipb.CPUTimeRecord to util.Metric
@@ -166,14 +106,14 @@ func topSQLProtoToMetric(
 
 // transform resource_usage_agent.CPUTimeRecord to util.Metric
 func rsMeteringProtoToMetric(
-	instance, instance_type string,
+	instance, instanceType string,
 	record *rsmetering.ResourceUsageRecord,
 ) (m Metric, err error) {
 	tag := tipb.ResourceGroupTag{}
 
 	m.Metric.Name = "cpu_time"
 	m.Metric.Instance = instance
-	m.Metric.InstanceType = instance_type
+	m.Metric.InstanceType = instanceType
 
 	tag.Reset()
 	if err = tag.Unmarshal(record.ResourceGroupTag); err != nil {
