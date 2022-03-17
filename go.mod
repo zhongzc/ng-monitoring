@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/VictoriaMetrics/VictoriaMetrics v1.65.0
 	github.com/dgraph-io/badger/v3 v3.2103.1
+	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/genjidb/genji v0.13.0
 	github.com/genjidb/genji/engine/badgerengine v0.13.0
 	github.com/gin-contrib/pprof v1.3.0
@@ -16,7 +17,7 @@ require (
 	github.com/google/pprof v0.0.0-20211008130755-947d60d73cc0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/pingcap/kvproto v0.0.0-20211229082925-7a8280c36daf
+	github.com/pingcap/kvproto v0.0.0-20220314103629-10e688307221
 	github.com/pingcap/log v0.0.0-20210906054005-afc726e70354
 	github.com/pingcap/tidb-dashboard/util v0.0.0-20211014081729-82f8b809f5ae
 	github.com/pingcap/tipb v0.0.0-20220107024056-3b91949a18a7
