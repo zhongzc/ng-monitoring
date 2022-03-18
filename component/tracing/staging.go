@@ -1,8 +1,6 @@
 package tracing
 
 import (
-	"time"
-
 	"github.com/pingcap/kvproto/pkg/tracepb"
 )
 
@@ -10,13 +8,12 @@ type Staging struct {
 	table StageTable
 }
 
-func (s *Staging) PutRecord(instance, instanceType string, report *tracepb.Report) error {
-	now := time.Now().Unix()
+func (s *Staging) PutRecord(timestamp uint64, instance, instanceType string, report *tracepb.Report) error {
+	beginNs, endNs := getBeginEnd(report)
 
 	// A group of Spans from the root trace
 	if len(report.RemoteParentSpans) == 1 && report.RemoteParentSpans[0].SpanId == 0 {
-		// find the root span of the root trace whose
-		// event is treated as the root event
+		// find the root span of the root trace since its event is treated as the root event
 		rootEvent := ""
 		for _, span := range report.Spans {
 			if span.ParentId == 0 {
@@ -28,8 +25,10 @@ func (s *Staging) PutRecord(instance, instanceType string, report *tracepb.Repor
 			Instance:     instance,
 			InstanceType: instanceType,
 			Spans:        report.Spans,
+			BeginUnixNs:  beginNs,
+			EndUnixNs:    endNs,
 			RootEvent:    rootEvent,
-		}, uint64(now))
+		}, timestamp)
 	}
 
 	for _, remoteParentSpan := range report.RemoteParentSpans {
@@ -47,7 +46,9 @@ func (s *Staging) PutRecord(instance, instanceType string, report *tracepb.Repor
 			Instance:     instance,
 			InstanceType: instanceType,
 			Spans:        spans,
-		}, uint64(now)); err != nil {
+			BeginUnixNs:  beginNs,
+			EndUnixNs:    endNs,
+		}, timestamp); err != nil {
 			return err
 		}
 	}
@@ -55,7 +56,34 @@ func (s *Staging) PutRecord(instance, instanceType string, report *tracepb.Repor
 	return nil
 }
 
-func (s *Staging) NotifyCollect(notify *tracepb.NotifyCollect) error {
-	now := time.Now().Unix()
-	return s.table.Commit(notify.TraceId, uint64(now))
+func (s *Staging) NotifyCollect(timestamp uint64, notify *tracepb.NotifyCollect) error {
+	return s.table.Commit(notify.TraceId, timestamp)
+}
+
+func (s *Staging) StoreCommitted(timestamp uint64) error {
+	//return s.table.Advance(timestamp)
+
+	// TODO: take committed trace and store them into database
+	return nil
+}
+
+func getBeginEnd(report *tracepb.Report) (uint64, uint64) {
+	if len(report.Spans) == 0 {
+		return 0, 0
+	}
+
+	beginNs := report.Spans[0].BeginUnixNs
+	endNs := report.Spans[0].DurationNs + beginNs
+	for _, span := range report.Spans {
+		b := span.BeginUnixNs
+		e := span.DurationNs + b
+		if b < beginNs {
+			beginNs = b
+		}
+		if e > endNs {
+			endNs = e
+		}
+	}
+
+	return beginNs, endNs
 }

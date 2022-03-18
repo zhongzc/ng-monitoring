@@ -12,6 +12,16 @@ type TraceInfo struct {
 	InstanceType string
 	RootEvent    string
 	Spans        []*tracepb.Span
+	BeginUnixNs  uint64
+	EndUnixNs    uint64
+}
+
+type Traces struct {
+	TraceID        uint64
+	TraceInfos     []*TraceInfo
+	Version        uint64
+	MinBeginUnixNs uint64
+	MaxEndUnixNs   uint64
 }
 
 type StageTable interface {
@@ -19,7 +29,7 @@ type StageTable interface {
 	Put(traceID uint64, traceInfo *TraceInfo, version uint64) error
 
 	// Get returns the trace information of the traceID.
-	Get(traceID uint64) ([]*TraceInfo, bool)
+	Get(traceID uint64) (Traces, bool)
 
 	// Commit marks the traceID as needed to be persisted.
 	Commit(traceID uint64, version uint64) error
@@ -29,7 +39,7 @@ type StageTable interface {
 
 	// Advance advances the version of the stage table, and returns Spans that need
 	// to be persisted. Caller should persist the Spans.
-	Advance(version uint64) map[uint64][]*TraceInfo
+	Advance(version uint64) map[uint64]*Traces
 }
 
 var (
@@ -50,12 +60,12 @@ type DefaultStageTable struct {
 	version uint64
 
 	// traceID -> TraceInfo
-	traceMap map[uint64][]*TraceInfo
+	traceMap map[uint64]*Traces
 	// version -> [traceID]
 	traceVersions *btree.Tree
 
 	// traceID
-	committedMap map[uint64]struct{}
+	committedMap map[uint64]*Traces
 	// version -> [traceID]
 	committedVersions *btree.Tree
 }
@@ -63,9 +73,9 @@ type DefaultStageTable struct {
 func NewStageTable(maxSpanCount int) *DefaultStageTable {
 	return &DefaultStageTable{
 		maxSpanCount:      maxSpanCount,
-		traceMap:          make(map[uint64][]*TraceInfo),
+		traceMap:          make(map[uint64]*Traces),
 		traceVersions:     btree.NewWith(4, traceIDComparator),
-		committedMap:      make(map[uint64]struct{}),
+		committedMap:      make(map[uint64]*Traces),
 		committedVersions: btree.NewWith(4, traceIDComparator),
 	}
 }
@@ -83,25 +93,45 @@ func (st *DefaultStageTable) Put(traceID uint64, traceInfo *TraceInfo, version u
 
 	st.curSpanCount += len(traceInfo.Spans)
 
-	traces, ok := st.traceMap[traceID]
-	st.traceMap[traceID] = append(traces, traceInfo)
-	if !ok {
-		t, found := st.traceVersions.Get(version)
-		if !found {
-			t = &[]uint64{}
-		}
-		traceIDs := t.(*[]uint64)
-		*traceIDs = append(*traceIDs, traceID)
-		st.traceVersions.Put(version, traceIDs)
+	// Case 1: it's a committed trace
+	if traces := st.committedMap[traceID]; traces != nil {
+		st.appendTraceInfoToTraces(traces, traceInfo)
+		return nil
 	}
 
+	// Case 2: it's an uncommitted but staged trace
+	if traces := st.traceMap[traceID]; traces != nil {
+		st.appendTraceInfoToTraces(traces, traceInfo)
+		return nil
+	}
+
+	// Case 3: it's a new trace to be staged
+	traces := &Traces{
+		TraceID:        traceID,
+		TraceInfos:     []*TraceInfo{traceInfo},
+		Version:        version,
+		MinBeginUnixNs: traceInfo.BeginUnixNs,
+		MaxEndUnixNs:   traceInfo.EndUnixNs,
+	}
+	st.traceMap[traceID] = traces
+	st.appendTraceToVersion(traceID, version, st.traceVersions)
 	return nil
 }
 
-func (st *DefaultStageTable) Get(traceID uint64) ([]*TraceInfo, bool) {
+func (st *DefaultStageTable) Get(traceID uint64) (Traces, bool) {
 	traces, found := st.traceMap[traceID]
-	res := make([]*TraceInfo, len(traces))
-	copy(res, traces)
+	if !found {
+		traces, found = st.committedMap[traceID]
+	}
+	if !found {
+		return Traces{}, false
+	}
+
+	// Copy trace infos to avoid data race
+	traceInfos := make([]*TraceInfo, len(traces.TraceInfos))
+	copy(traceInfos, traces.TraceInfos)
+	res := *traces
+	res.TraceInfos = traceInfos
 	return res, found
 }
 
@@ -111,15 +141,20 @@ func (st *DefaultStageTable) Commit(traceID uint64, version uint64) error {
 	}
 
 	if _, ok := st.committedMap[traceID]; !ok {
-		st.committedMap[traceID] = struct{}{}
+		traces := st.traceMap[traceID]
+		delete(st.traceMap, traceID)
 
-		t, found := st.committedVersions.Get(version)
-		if !found {
-			t = &[]uint64{}
+		if traces == nil {
+			traces = &Traces{
+				TraceID: traceID,
+				Version: version,
+			}
+		} else {
+			st.removeTraceIDFromVersion(traceID, traces.Version, st.traceVersions)
+			traces.Version = version
 		}
-		traceIDs := t.(*[]uint64)
-		*traceIDs = append(*traceIDs, traceID)
-		st.committedVersions.Put(version, traceIDs)
+		st.committedMap[traceID] = traces
+		st.appendTraceToVersion(traceID, version, st.committedVersions)
 	}
 	return nil
 }
@@ -132,12 +167,12 @@ func (st *DefaultStageTable) GetCommittedID() []uint64 {
 	return res
 }
 
-func (st *DefaultStageTable) Advance(version uint64) map[uint64][]*TraceInfo {
+func (st *DefaultStageTable) Advance(version uint64) map[uint64]*Traces {
 	if version < st.version {
 		return nil
 	}
 
-	res := make(map[uint64][]*TraceInfo)
+	res := make(map[uint64]*Traces)
 
 	st.version = version
 	it := st.committedVersions.Iterator()
@@ -150,15 +185,8 @@ func (st *DefaultStageTable) Advance(version uint64) map[uint64][]*TraceInfo {
 
 		traceIDs := it.Value().(*[]uint64)
 		for _, traceID := range *traceIDs {
-			delete(st.committedMap, traceID)
-
-			if traces, ok := st.traceMap[traceID]; ok {
-				for _, traceInfo := range traces {
-					st.curSpanCount -= len(traceInfo.Spans)
-				}
-				delete(st.traceMap, traceID)
-				res[traceID] = traces
-			}
+			res[traceID] = st.committedMap[traceID]
+			st.removeTrace(traceID, st.committedMap)
 		}
 	}
 
@@ -171,11 +199,52 @@ func (st *DefaultStageTable) Advance(version uint64) map[uint64][]*TraceInfo {
 		st.traceVersions.Remove(ver)
 		traceIDs := it.Value().(*[]uint64)
 		for _, traceID := range *traceIDs {
-			delete(st.traceMap, traceID)
+			st.removeTrace(traceID, st.traceMap)
 		}
 	}
 
 	return res
+}
+
+func (st *DefaultStageTable) appendTraceToVersion(traceID, version uint64, tree *btree.Tree) {
+	t, found := tree.Get(version)
+	if !found {
+		t = &[]uint64{}
+	}
+	traceIDs := t.(*[]uint64)
+	*traceIDs = append(*traceIDs, traceID)
+	tree.Put(version, traceIDs)
+}
+
+func (st *DefaultStageTable) removeTrace(traceID uint64, m map[uint64]*Traces) {
+	if traces := m[traceID]; traces != nil {
+		for _, traceInfo := range traces.TraceInfos {
+			st.curSpanCount -= len(traceInfo.Spans)
+		}
+	}
+	delete(m, traceID)
+}
+
+func (st *DefaultStageTable) removeTraceIDFromVersion(traceID uint64, version uint64, versions *btree.Tree) {
+	t, _ := versions.Get(version)
+	traceIDs := t.(*[]uint64)
+	for i, id := range *traceIDs {
+		if id == traceID {
+			*traceIDs = append((*traceIDs)[:i], (*traceIDs)[i+1:]...)
+			break
+		}
+	}
+	versions.Put(version, traceIDs)
+}
+
+func (st *DefaultStageTable) appendTraceInfoToTraces(traces *Traces, info *TraceInfo) {
+	if info.BeginUnixNs < traces.MinBeginUnixNs {
+		traces.MinBeginUnixNs = info.BeginUnixNs
+	}
+	if info.EndUnixNs > traces.MaxEndUnixNs {
+		traces.MaxEndUnixNs = info.EndUnixNs
+	}
+	traces.TraceInfos = append(traces.TraceInfos, info)
 }
 
 func traceIDComparator(a, b interface{}) int {
