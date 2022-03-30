@@ -41,3 +41,20 @@ func (hdp *HeaderPool) Put(hdv http.Header) {
 	}
 	hdp.p.Put(hdv)
 }
+
+type PrepareSlicePool struct {
+	p sync.Pool
+}
+
+func (psp *PrepareSlicePool) Get() *[]interface{} {
+	psv := psp.p.Get()
+	if psv == nil {
+		return &[]interface{}{}
+	}
+	return psv.(*[]interface{})
+}
+
+func (psp *PrepareSlicePool) Put(ps *[]interface{}) {
+	*ps = (*ps)[:0]
+	psp.p.Put(ps)
+}

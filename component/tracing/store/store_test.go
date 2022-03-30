@@ -2,7 +2,9 @@ package store
 
 import (
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/pingcap/ng-monitoring/component/tracing/model"
@@ -25,7 +27,7 @@ func TestStoreBasic(t *testing.T) {
 	}}
 	record := &tracepb.Report{RemoteParentSpans: parents, Spans: spans}
 
-	err := store.TraceRecord(instance, instanceType, record)
+	err := store.TraceRecord(instance, instanceType, time.Now(), record)
 	require.NoError(t, err)
 
 	traceID := parents[0].TraceId
@@ -50,7 +52,7 @@ func TestStoreNil(t *testing.T) {
 
 	instance := "tidb:10080"
 	instanceType := "tidb"
-	err := store.TraceRecord(instance, instanceType, &tracepb.Report{})
+	err := store.TraceRecord(instance, instanceType, time.Now(), &tracepb.Report{})
 	require.NoError(t, err)
 }
 
@@ -73,7 +75,7 @@ func TestStoreMultiParents(t *testing.T) {
 	}}
 	record := &tracepb.Report{RemoteParentSpans: parents, Spans: spans}
 
-	err := store.TraceRecord(instance, instanceType, record)
+	err := store.TraceRecord(instance, instanceType, time.Now(), record)
 	require.NoError(t, err)
 
 	for _, parent := range parents {
@@ -102,6 +104,7 @@ func TestStoreSameTraceIDTwice(t *testing.T) {
 
 	traceID := uint64(42)
 
+	// trace record from tidb with the same traceID
 	instance0 := "tidb:10080"
 	instanceType0 := "tidb"
 	parents0 := []*tracepb.RemoteParentSpan{{
@@ -113,9 +116,10 @@ func TestStoreSameTraceIDTwice(t *testing.T) {
 		ParentId: 0,
 	}}
 	record0 := &tracepb.Report{RemoteParentSpans: parents0, Spans: spans0}
-	err := store.TraceRecord(instance0, instanceType0, record0)
+	err := store.TraceRecord(instance0, instanceType0, time.Now(), record0)
 	require.NoError(t, err)
 
+	// trace record from tikv with the same traceID
 	instance1 := "tikv:20180"
 	instanceType1 := "tikv"
 	parents1 := []*tracepb.RemoteParentSpan{{
@@ -127,9 +131,10 @@ func TestStoreSameTraceIDTwice(t *testing.T) {
 		ParentId: 0,
 	}}
 	record1 := &tracepb.Report{RemoteParentSpans: parents1, Spans: spans1}
-	err = store.TraceRecord(instance1, instanceType1, record1)
+	err = store.TraceRecord(instance1, instanceType1, time.Now(), record1)
 	require.NoError(t, err)
 
+	// get the trace result expected to be with two span groups
 	trace, err := store.GetTrace(traceID)
 	require.NoError(t, err)
 
@@ -167,7 +172,7 @@ func NewMockStore() *MockStore {
 
 var _ Store = &MockStore{}
 
-func (m *MockStore) TraceRecord(instance, instanceType string, record *tracepb.Report) error {
+func (m *MockStore) TraceRecord(instance, instanceType string, createdTime time.Time, record *tracepb.Report) error {
 	for i, parent := range record.RemoteParentSpans {
 		traceID := parent.TraceId
 		parentID := parent.SpanId
@@ -186,7 +191,7 @@ func (m *MockStore) TraceRecord(instance, instanceType string, record *tracepb.R
 		})
 
 		item := m.store[traceID]
-		item.TraceID = traceID
+		item.TraceID = strconv.FormatUint(traceID, 10)
 		spanGroup := model.SpanGroup{
 			Instance:     instance,
 			InstanceType: instanceType,

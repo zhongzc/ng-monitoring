@@ -33,10 +33,7 @@ func NewDefaultStore(vminsertHandler http.HandlerFunc, documentDB *genji.DB) (*D
 	if err := ds.initDocumentDB(); err != nil {
 		return nil, err
 	}
-	return &DefaultStore{
-		vminsertHandler: vminsertHandler,
-		documentDB:      documentDB,
-	}, nil
+	return ds, nil
 }
 
 func (ds *DefaultStore) initDocumentDB() error {
