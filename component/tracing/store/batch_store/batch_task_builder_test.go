@@ -5,18 +5,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/db"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestBatchTaskBuilderBasic(t *testing.T) {
-	ch := make(chan *WriteDBTask, 10000)
+	ch := make(chan *db.WriteDBTask, 10000)
 	builder := NewBatchTaskBuilder(ch)
 
 	for i := 0; i < 100; i++ {
-		ch <- &WriteDBTask{}
+		ch <- &db.WriteDBTask{}
 	}
 
-	var tasks []*WriteDBTask
+	var tasks []*db.WriteDBTask
 	builder.FetchBatch(context.Background(), 40, &tasks)
 	require.Equal(t, 40, len(tasks))
 
@@ -30,10 +32,10 @@ func TestBatchTaskBuilderBasic(t *testing.T) {
 }
 
 func TestBatchTaskBuilderNotEnough(t *testing.T) {
-	ch := make(chan *WriteDBTask, 10000)
+	ch := make(chan *db.WriteDBTask, 10000)
 	builder := NewBatchTaskBuilder(ch)
 
-	var tasks []*WriteDBTask
+	var tasks []*db.WriteDBTask
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -41,7 +43,7 @@ func TestBatchTaskBuilderNotEnough(t *testing.T) {
 	require.Equal(t, 0, len(tasks))
 
 	for i := 0; i < 10; i++ {
-		ch <- &WriteDBTask{}
+		ch <- &db.WriteDBTask{}
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)

@@ -5,18 +5,19 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/db"
 	"github.com/pingcap/ng-monitoring/component/tracing/store"
 
 	"github.com/pingcap/kvproto/pkg/tracepb"
 )
 
 type TaskTransfer struct {
-	taskChan chan *WriteDBTask
+	taskChan chan *db.WriteDBTask
 }
 
 func NewTaskTransfer(capacity int) *TaskTransfer {
 	return &TaskTransfer{
-		taskChan: make(chan *WriteDBTask, capacity),
+		taskChan: make(chan *db.WriteDBTask, capacity),
 	}
 }
 
@@ -41,7 +42,7 @@ func (t *TaskTransfer) TraceRecord(instance, instanceType string, createdTime ti
 			span.ParentId = parentID
 		})
 
-		task := &WriteDBTask{
+		task := &db.WriteDBTask{
 			Instance:     instance,
 			InstanceType: instanceType,
 			TraceID:      strconv.FormatUint(traceID, 10),
@@ -61,7 +62,7 @@ func (t *TaskTransfer) TraceRecord(instance, instanceType string, createdTime ti
 
 func (t *TaskTransfer) Close() {}
 
-func (t *TaskTransfer) Receiver() <-chan *WriteDBTask {
+func (t *TaskTransfer) Receiver() <-chan *db.WriteDBTask {
 	return t.taskChan
 }
 

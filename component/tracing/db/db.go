@@ -1,4 +1,4 @@
-package batch_store
+package db
 
 type DB interface {
 	Write(tasks []*WriteDBTask) error

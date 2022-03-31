@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/db"
 	"github.com/pingcap/ng-monitoring/utils"
 
 	"github.com/pingcap/log"
@@ -21,10 +22,10 @@ type WriteDBWorker struct {
 	wg  *sync.WaitGroup
 
 	batchBuilder *BatchTaskBuilder
-	db           DB
+	db           db.DB
 }
 
-func NewWriteDBWorker(ctx context.Context, db DB, taskChan <-chan *WriteDBTask) *WriteDBWorker {
+func NewWriteDBWorker(ctx context.Context, db db.DB, taskChan <-chan *db.WriteDBTask) *WriteDBWorker {
 	return &WriteDBWorker{
 		ctx: ctx,
 		wg:  &sync.WaitGroup{},
@@ -44,7 +45,7 @@ func (ww *WriteDBWorker) Start() {
 		defer ww.wg.Done()
 
 		// prepare batch which will be reused
-		taskBuffer := make([]*WriteDBTask, 0, DefaultWriteBatchSize)
+		taskBuffer := make([]*db.WriteDBTask, 0, DefaultWriteBatchSize)
 		for {
 			select {
 			case <-ww.ctx.Done():
@@ -56,7 +57,7 @@ func (ww *WriteDBWorker) Start() {
 	}, nil)
 }
 
-func (ww *WriteDBWorker) doWork(taskBuffer *[]*WriteDBTask) {
+func (ww *WriteDBWorker) doWork(taskBuffer *[]*db.WriteDBTask) {
 	if ww == nil {
 		return
 	}

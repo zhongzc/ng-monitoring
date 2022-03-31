@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/db"
 	"github.com/pingcap/ng-monitoring/component/tracing/store"
 
-	"github.com/genjidb/genji"
 	"github.com/pingcap/kvproto/pkg/tracepb"
 )
 
@@ -23,27 +23,20 @@ type BatchStore struct {
 	writeDBWorker *WriteDBWorker
 }
 
-func NewBatchStore(ctx context.Context, documentDB *genji.DB) (*BatchStore, error) {
+func NewBatchStore(ctx context.Context, db db.DB) *BatchStore {
 	ctx, cancel := context.WithCancel(ctx)
-
-	db, err := NewDBGenji(documentDB)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
 
 	taskTransfer := NewTaskTransfer(DefaultWriteTaskChannelSize)
 	writeDBWorker := NewWriteDBWorker(ctx, db, taskTransfer.Receiver())
 	writeDBWorker.Start()
 
-	ds := &BatchStore{
+	return &BatchStore{
 		ctx:    ctx,
 		cancel: cancel,
 
 		taskTransfer:  taskTransfer,
 		writeDBWorker: writeDBWorker,
 	}
-	return ds, nil
 }
 
 var _ store.Store = &BatchStore{}

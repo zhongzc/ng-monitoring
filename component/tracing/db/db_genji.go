@@ -1,4 +1,4 @@
-package batch_store
+package db
 
 import (
 	"strings"

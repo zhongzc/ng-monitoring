@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/db"
+
 	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +35,7 @@ func TestTaskTransferBasic(t *testing.T) {
 	err := transfer.TraceRecord("tidb:10080", "tidb", now, record)
 	require.NoError(t, err)
 
-	expectedTasks := []*WriteDBTask{{
+	expectedTasks := []*db.WriteDBTask{{
 		TraceID:      "40",
 		Instance:     "tidb:10080",
 		InstanceType: "tidb",
@@ -113,8 +115,8 @@ func TestTaskTransferFull(t *testing.T) {
 	require.Equal(t, 4, len(tasks))
 }
 
-func receiveAll(rx <-chan *WriteDBTask) []*WriteDBTask {
-	var tasks []*WriteDBTask
+func receiveAll(rx <-chan *db.WriteDBTask) []*db.WriteDBTask {
+	var tasks []*db.WriteDBTask
 	for {
 		select {
 		case task := <-rx:
