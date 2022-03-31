@@ -2,7 +2,6 @@ package batch_store
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -53,26 +52,4 @@ func TestWriteDBWorkerWork(t *testing.T) {
 
 	tasks = mockDB.GetTasks()
 	require.Equal(t, 0, len(tasks))
-}
-
-type MockDB struct {
-	sync.Mutex
-	tasks []*db.WriteDBTask
-}
-
-var _ db.DB = &MockDB{}
-
-func (m *MockDB) Write(tasks []*db.WriteDBTask) error {
-	m.Lock()
-	m.tasks = append(m.tasks, tasks...)
-	m.Unlock()
-	return nil
-}
-
-func (m *MockDB) GetTasks() []*db.WriteDBTask {
-	m.Lock()
-	tasks := m.tasks
-	m.tasks = nil
-	m.Unlock()
-	return tasks
 }
