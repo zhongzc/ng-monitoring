@@ -2,7 +2,6 @@ package batch_store
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 )
 
 func TestBatchStoreBasic(t *testing.T) {
-	mockDB := &MockDB{}
+	mockDB := &db.MockDB{}
 	store := NewBatchStore(context.Background(), mockDB)
 	defer store.Close()
 
@@ -35,8 +34,8 @@ func TestBatchStoreBasic(t *testing.T) {
 	err := store.TraceRecord(instance, instanceType, createdTime, record)
 	require.NoError(t, err)
 
-	expectedTask := &db.WriteDBTask{
-		TraceID:      "20",
+	expectedItem := &db.TraceItem{
+		TraceID:      20,
 		Instance:     instance,
 		InstanceType: instanceType,
 		CreatedTsMs:  createdTime.UnixNano() / int64(time.Millisecond),
@@ -44,28 +43,6 @@ func TestBatchStoreBasic(t *testing.T) {
 	}
 
 	time.Sleep(100 * time.Millisecond)
-	tasks := mockDB.GetTasks()
-	require.Equal(t, []*db.WriteDBTask{expectedTask}, tasks)
-}
-
-type MockDB struct {
-	sync.Mutex
-	tasks []*db.WriteDBTask
-}
-
-var _ db.DB = &MockDB{}
-
-func (m *MockDB) Write(tasks []*db.WriteDBTask) error {
-	m.Lock()
-	m.tasks = append(m.tasks, tasks...)
-	m.Unlock()
-	return nil
-}
-
-func (m *MockDB) GetTasks() []*db.WriteDBTask {
-	m.Lock()
-	tasks := m.tasks
-	m.tasks = nil
-	m.Unlock()
-	return tasks
+	items := mockDB.TakeAll()
+	require.Equal(t, []*db.TraceItem{expectedItem}, items)
 }

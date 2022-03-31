@@ -10,9 +10,9 @@ import (
 )
 
 func TestQueryBasic(t *testing.T) {
-	query := NewMockQuery(map[string]model.Trace{
-		"20": {
-			TraceID: "20",
+	query := NewMockQuery(map[uint64]model.Trace{
+		20: {
+			TraceID: 20,
 			SpanGroups: []model.SpanGroup{{
 				InstanceType: "tidb",
 				Instance:     "127.0.0.1:10080",
@@ -32,8 +32,8 @@ func TestQueryBasic(t *testing.T) {
 			}},
 		},
 
-		"30": {
-			TraceID: "30",
+		30: {
+			TraceID: 30,
 			SpanGroups: []model.SpanGroup{{
 				InstanceType: "tidb",
 				Instance:     "127.0.0.1:10081",
@@ -65,25 +65,25 @@ func TestQueryBasic(t *testing.T) {
 	})
 	defer query.Close()
 
-	trace, err := query.Trace("20")
+	trace, err := query.Trace(20)
 	require.NoError(t, err)
 	require.Equal(t, trace.TraceID, uint64(20))
 	require.Equal(t, len(trace.SpanGroups), 1)
 
-	trace, err = query.Trace("30")
+	trace, err = query.Trace(30)
 	require.NoError(t, err)
 	require.Equal(t, trace.TraceID, uint64(30))
 	require.Equal(t, len(trace.SpanGroups), 2)
 
-	trace, err = query.Trace("40")
+	trace, err = query.Trace(40)
 	require.Error(t, err)
 }
 
 type MockQuery struct {
-	store map[string]model.Trace
+	store map[uint64]model.Trace
 }
 
-func NewMockQuery(store map[string]model.Trace) *MockQuery {
+func NewMockQuery(store map[uint64]model.Trace) *MockQuery {
 	return &MockQuery{
 		store: store,
 	}
@@ -91,7 +91,7 @@ func NewMockQuery(store map[string]model.Trace) *MockQuery {
 
 var _ Query = &MockQuery{}
 
-func (m *MockQuery) Trace(traceID string) (*model.Trace, error) {
+func (m *MockQuery) Trace(traceID uint64) (*model.Trace, error) {
 	trace, ok := m.store[traceID]
 	if ok {
 		return &trace, nil

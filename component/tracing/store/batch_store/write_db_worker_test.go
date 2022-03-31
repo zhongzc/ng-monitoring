@@ -11,7 +11,7 @@ import (
 )
 
 func TestWriteDBWorkerBasic(t *testing.T) {
-	mockDB := &MockDB{}
+	mockDB := &db.MockDB{}
 	ch := make(chan *db.WriteDBTask, 100)
 	ctx, cancel := context.WithCancel(context.Background())
 	worker := NewWriteDBWorker(ctx, mockDB, ch)
@@ -27,12 +27,12 @@ func TestWriteDBWorkerBasic(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	tasks := mockDB.GetTasks()
-	require.Equal(t, 50, len(tasks))
+	items := mockDB.TakeAll()
+	require.Equal(t, 50, len(items))
 }
 
 func TestWriteDBWorkerWork(t *testing.T) {
-	mockDB := &MockDB{}
+	mockDB := &db.MockDB{}
 	ch := make(chan *db.WriteDBTask, 100)
 	worker := NewWriteDBWorker(context.Background(), mockDB, ch)
 
@@ -44,12 +44,12 @@ func TestWriteDBWorkerWork(t *testing.T) {
 	worker.doWork(&taskBuffer)
 	require.Equal(t, 0, len(taskBuffer))
 
-	tasks := mockDB.GetTasks()
-	require.Equal(t, 50, len(tasks))
+	items := mockDB.TakeAll()
+	require.Equal(t, 50, len(items))
 
 	worker.doWork(&taskBuffer)
 	require.Equal(t, 0, len(taskBuffer))
 
-	tasks = mockDB.GetTasks()
-	require.Equal(t, 0, len(tasks))
+	items = mockDB.TakeAll()
+	require.Equal(t, 0, len(items))
 }

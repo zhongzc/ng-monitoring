@@ -6,6 +6,8 @@ import (
 	"github.com/pingcap/ng-monitoring/utils"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/types"
 	"github.com/pingcap/kvproto/pkg/tracepb"
 )
 
@@ -26,7 +28,7 @@ func NewDBGenji(db *genji.DB) (*DBGenji, error) {
 
 var _ DB = &DBGenji{}
 
-func (db *DBGenji) Write(tasks []*WriteDBTask) error {
+func (db *DBGenji) Put(tasks []*WriteDBTask) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -41,7 +43,7 @@ func (db *DBGenji) Write(tasks []*WriteDBTask) error {
 	defer prepareSliceP.Put(args)
 
 	for _, task := range tasks {
-		*args = append(*args, task.TraceID)
+		*args = append(*args, int64(task.TraceID)) // uint64 -> int64
 		*args = append(*args, task.CreatedTsMs)
 		*args = append(*args, task.Instance)
 		*args = append(*args, task.InstanceType)
@@ -57,9 +59,50 @@ func (db *DBGenji) Write(tasks []*WriteDBTask) error {
 	return preparedStmt.Exec(*args...)
 }
 
+func (db *DBGenji) Get(traceID uint64, fill *[]*TraceItem) error {
+	res, err := db.db.Query(`
+		SELECT
+			created_ts_ms, instance, instance_type, spans
+		FROM
+			traces 
+		WHERE
+			trace_id = ?
+	`, int64(traceID)) // uint64 -> int64
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	return res.Iterate(func(d types.Document) error {
+		var createdTsMs int64
+		var instance string
+		var instanceType string
+		var spans []byte
+		err = document.Scan(d, &createdTsMs, &instance, &instanceType, &spans)
+		if err != nil {
+			return err
+		}
+
+		var pbStruct tracepb.Report
+		err = pbStruct.Unmarshal(spans)
+		if err != nil {
+			return err
+		}
+
+		*fill = append(*fill, &TraceItem{
+			TraceID:      traceID,
+			CreatedTsMs:  createdTsMs,
+			Instance:     instance,
+			InstanceType: instanceType,
+			Spans:        pbStruct.Spans,
+		})
+		return nil
+	})
+}
+
 func initTables(documentDB *genji.DB) error {
 	createTableStmts := []string{
-		"CREATE TABLE IF NOT EXISTS traces (trace_id TEXT NOT NULL, created_ts_ms INT NOT NULL)",
+		"CREATE TABLE IF NOT EXISTS traces (trace_id BIGINT NOT NULL, created_ts_ms BIGINT NOT NULL)",
 		"CREATE INDEX IF NOT EXISTS traces_trace_id ON traces (trace_id)",
 		"CREATE INDEX IF NOT EXISTS traces_created_ts_idx ON traces (created_ts)",
 	}

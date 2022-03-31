@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"strconv"
 	"testing"
 	"time"
 
@@ -173,7 +172,7 @@ func NewMockStore() *MockStore {
 
 var _ Store = &MockStore{}
 
-func (m *MockStore) TraceRecord(instance, instanceType string, createdTime time.Time, record *tracepb.Report) error {
+func (m *MockStore) TraceRecord(instance, instanceType string, _ time.Time, record *tracepb.Report) error {
 	for i, parent := range record.RemoteParentSpans {
 		traceID := parent.TraceId
 		parentID := parent.SpanId
@@ -192,7 +191,7 @@ func (m *MockStore) TraceRecord(instance, instanceType string, createdTime time.
 		})
 
 		item := m.store[traceID]
-		item.TraceID = strconv.FormatUint(traceID, 10)
+		item.TraceID = traceID
 		spanGroup := model.SpanGroup{
 			Instance:     instance,
 			InstanceType: instanceType,

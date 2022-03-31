@@ -36,7 +36,7 @@ func TestTaskTransferBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedTasks := []*db.WriteDBTask{{
-		TraceID:      "40",
+		TraceID:      40,
 		Instance:     "tidb:10080",
 		InstanceType: "tidb",
 		CreatedTsMs:  now.UnixNano() / int64(time.Millisecond),
@@ -48,7 +48,7 @@ func TestTaskTransferBasic(t *testing.T) {
 			Event:       "bar",
 		}},
 	}, {
-		TraceID:      "42",
+		TraceID:      42,
 		Instance:     "tidb:10080",
 		InstanceType: "tidb",
 		CreatedTsMs:  now.UnixNano() / int64(time.Millisecond),

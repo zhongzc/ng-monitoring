@@ -3,7 +3,7 @@ package model
 import "github.com/pingcap/kvproto/pkg/tracepb"
 
 type Trace struct {
-	TraceID    string
+	TraceID    uint64
 	SpanGroups []SpanGroup
 }
 

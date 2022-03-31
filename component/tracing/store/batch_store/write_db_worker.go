@@ -69,7 +69,7 @@ func (ww *WriteDBWorker) doWork(taskBuffer *[]*db.WriteDBTask) {
 	ww.batchBuilder.FetchBatch(ctx, DefaultWriteBatchSize, taskBuffer)
 
 	// write the batch to db
-	if err := ww.db.Write(*taskBuffer); err != nil {
+	if err := ww.db.Put(*taskBuffer); err != nil {
 		log.Warn("write records to db failed", zap.Error(err))
 	}
 

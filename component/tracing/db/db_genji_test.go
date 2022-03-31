@@ -12,7 +12,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/engine/badgerengine"
-	"github.com/genjidb/genji/types"
 	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +43,8 @@ func TestDBGenjiBasic(t *testing.T) {
 	storeDB, err := NewDBGenji(db)
 	require.NoError(t, err)
 
-	items := []*WriteDBTask{{
-		TraceID:      "20",
+	tasks := []*WriteDBTask{{
+		TraceID:      20,
 		CreatedTsMs:  time.Now().UnixNano() / int64(time.Millisecond),
 		Instance:     "tidb:10080",
 		InstanceType: "tidb",
@@ -57,7 +56,7 @@ func TestDBGenjiBasic(t *testing.T) {
 			Event:       "SELECT 1",
 		}},
 	}, {
-		TraceID:      "20",
+		TraceID:      20,
 		CreatedTsMs:  time.Now().UnixNano() / int64(time.Millisecond),
 		Instance:     "tikv:10080",
 		InstanceType: "tikv",
@@ -70,46 +69,19 @@ func TestDBGenjiBasic(t *testing.T) {
 		}},
 	}}
 
-	for _, item := range items {
-		err = storeDB.Write([]*WriteDBTask{item})
+	for _, task := range tasks {
+		err = storeDB.Put([]*WriteDBTask{task})
 		require.NoError(t, err)
 	}
 
-	result, err := db.Query("SELECT * FROM traces WHERE trace_id = '20'")
+	var items []*TraceItem
+	err = storeDB.Get(20, &items)
 	require.NoError(t, err)
-	defer result.Close()
 
-	itemCount := 0
-	err = result.Iterate(func(d types.Document) error {
-		itemCount += 1
-
-		field := func(name string) interface{} {
-			value, err := d.GetByField(name)
-			require.NoError(t, err)
-			return value.V()
-		}
-
-		var item *WriteDBTask
-		switch instance := field("instance").(string); instance {
-		case items[0].Instance:
-			item = items[0]
-		case items[1].Instance:
-			item = items[1]
-		default:
-			require.Fail(t, "unexpected instance: "+instance)
-		}
-
-		require.Equal(t, item.TraceID, field("trace_id").(string))
-		require.Equal(t, item.CreatedTsMs, field("created_ts_ms").(int64))
-		require.Equal(t, item.InstanceType, field("instance_type").(string))
-		r := &tracepb.Report{}
-		require.NoError(t, r.Unmarshal(field("spans").([]byte)))
-		require.Equal(t, item.Spans, r.Spans)
-
-		return nil
-	})
-	require.NoError(t, err)
-	require.Equal(t, 2, itemCount)
+	for i, task := range tasks {
+		expectedItem := TraceItem(*task)
+		require.Equal(t, &expectedItem, items[i])
+	}
 }
 
 // goos: linux
@@ -157,7 +129,7 @@ func BenchmarkDBGenjiWrite(b *testing.B) {
 					b.StopTimer()
 					tasks := genWriteTasks(taskCount, spanCountPerTask)
 					b.StartTimer()
-					err = storeDB.Write(tasks)
+					err = storeDB.Put(tasks)
 					require.NoError(b, err)
 				}
 			})
@@ -180,7 +152,7 @@ func genWriteTasks(taskCount, spanCountPerTask int) []*WriteDBTask {
 		}
 
 		tasks = append(tasks, &WriteDBTask{
-			TraceID:      randStringRunes(16),
+			TraceID:      rand.Uint64(),
 			CreatedTsMs:  rand.Int63(),
 			Instance:     randStringRunes(16),
 			InstanceType: randStringRunes(5),

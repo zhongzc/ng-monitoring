@@ -2,7 +2,6 @@ package batch_store
 
 import (
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/ng-monitoring/component/tracing/db"
@@ -45,7 +44,7 @@ func (t *TaskTransfer) TraceRecord(instance, instanceType string, createdTime ti
 		task := &db.WriteDBTask{
 			Instance:     instance,
 			InstanceType: instanceType,
-			TraceID:      strconv.FormatUint(traceID, 10),
+			TraceID:      traceID,
 			CreatedTsMs:  tsMs,
 			Spans:        spans,
 		}
