@@ -3,9 +3,10 @@ package batch_store
 import (
 	"strings"
 
+	"github.com/pingcap/ng-monitoring/utils"
+
 	"github.com/genjidb/genji"
 	"github.com/pingcap/kvproto/pkg/tracepb"
-	"github.com/pingcap/ng-monitoring/utils"
 )
 
 var (

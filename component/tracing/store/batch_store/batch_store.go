@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/tracing/store"
+
 	"github.com/genjidb/genji"
 	"github.com/pingcap/kvproto/pkg/tracepb"
-	"github.com/pingcap/ng-monitoring/component/tracing/store"
 )
 
 var (

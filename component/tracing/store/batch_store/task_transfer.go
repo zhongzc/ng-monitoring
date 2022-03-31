@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/pingcap/ng-monitoring/component/tracing/store"
+
+	"github.com/pingcap/kvproto/pkg/tracepb"
 )
 
 type TaskTransfer struct {

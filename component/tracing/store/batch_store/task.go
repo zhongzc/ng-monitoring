@@ -1,8 +1,6 @@
 package batch_store
 
-import (
-	"github.com/pingcap/kvproto/pkg/tracepb"
-)
+import "github.com/pingcap/kvproto/pkg/tracepb"
 
 type WriteDBTask struct {
 	TraceID      string

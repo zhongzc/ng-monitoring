@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/pingcap/ng-monitoring/component/tracing/model"
+
+	"github.com/pingcap/kvproto/pkg/tracepb"
 	"github.com/stretchr/testify/require"
 )
 

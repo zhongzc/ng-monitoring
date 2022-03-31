@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/log"
 	"github.com/pingcap/ng-monitoring/utils"
+
+	"github.com/pingcap/log"
 	"go.uber.org/zap"
 )
 
