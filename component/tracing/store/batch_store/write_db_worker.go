@@ -40,31 +40,40 @@ func (ww *WriteDBWorker) Start() {
 	}
 
 	ww.wg.Add(1)
-	utils.GoWithRecovery(func() {
+	go utils.GoWithRecovery(func() {
 		defer ww.wg.Done()
 
 		// prepare batch which will be reused
-		tasks := make([]*WriteDBTask, 0, DefaultWriteBatchSize)
+		taskBuffer := make([]*WriteDBTask, 0, DefaultWriteBatchSize)
 		for {
 			select {
 			case <-ww.ctx.Done():
 				return
 			default:
-				// fetch tasks from builder
-				ctx, cancel := context.WithTimeout(ww.ctx, DefaultMaxRecvWaitTime)
-				ww.batchBuilder.FetchBatch(ctx, DefaultWriteBatchSize, &tasks)
-
-				// write the batch to db
-				if err := ww.db.Write(tasks); err != nil {
-					log.Warn("write records to db failed", zap.Error(err))
-				}
-
-				// reset the batch
-				tasks = tasks[:0]
-				cancel()
+				ww.doWork(&taskBuffer)
 			}
 		}
 	}, nil)
+}
+
+func (ww *WriteDBWorker) doWork(taskBuffer *[]*WriteDBTask) {
+	if ww == nil {
+		return
+	}
+
+	// fetch task from builder
+	ctx, cancel := context.WithTimeout(ww.ctx, DefaultMaxRecvWaitTime)
+	defer cancel()
+
+	ww.batchBuilder.FetchBatch(ctx, DefaultWriteBatchSize, taskBuffer)
+
+	// write the batch to db
+	if err := ww.db.Write(*taskBuffer); err != nil {
+		log.Warn("write records to db failed", zap.Error(err))
+	}
+
+	// reset the batch
+	*taskBuffer = (*taskBuffer)[:0]
 }
 
 func (ww *WriteDBWorker) Wait() {
