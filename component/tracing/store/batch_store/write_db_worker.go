@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	DefaultWriteBatchSize  = 100
-	DefaultMaxRecvWaitTime = 100 * time.Millisecond
+	DefaultWriteBatchSize  = 200
+	DefaultMaxRecvWaitTime = 10 * time.Millisecond
 )
 
 type WriteDBWorker struct {
