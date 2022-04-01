@@ -28,7 +28,7 @@ type Manager struct {
 	varSubscriber pdvariable.Subscriber
 
 	components     []topology.Component
-	scrapers       map[topology.Component]*Scraper
+	scrapers       map[topology.Component]*TopSQLScraper
 	topoSubscriber topology.Subscriber
 
 	config        *config.Config
@@ -52,7 +52,7 @@ func NewManager(
 		cancel:         cancel,
 		wg:             wg,
 		varSubscriber:  varSubscriber,
-		scrapers:       make(map[topology.Component]*Scraper),
+		scrapers:       make(map[topology.Component]*TopSQLScraper),
 		topoSubscriber: topoSubscriber,
 
 		config:        cfg,
@@ -134,7 +134,7 @@ func (m *Manager) updateScrapers() {
 
 	// set up incoming scrapers
 	for i := range in {
-		scraper := NewScraper(m.ctx, in[i], m.store, m.config.Security.GetTLSConfig())
+		scraper := NewTopSQLScraper(m.ctx, in[i], m.store, m.config.Security.GetTLSConfig())
 		m.scrapers[in[i]] = scraper
 
 		m.wg.Add(1)

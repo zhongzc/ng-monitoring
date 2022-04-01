@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/resource_usage_agent"
-	"github.com/pingcap/log"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/store"
 	"github.com/pingcap/ng-monitoring/utils"
+
+	"github.com/pingcap/kvproto/pkg/resource_usage_agent"
+	"github.com/pingcap/log"
 	"github.com/pingcap/tipb/go-tipb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -23,7 +24,7 @@ var (
 	dialTimeout = 5 * time.Second
 )
 
-type Scraper struct {
+type TopSQLScraper struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	tlsConfig *tls.Config
@@ -31,10 +32,10 @@ type Scraper struct {
 	store     store.Store
 }
 
-func NewScraper(ctx context.Context, component topology.Component, store store.Store, tlsConfig *tls.Config) *Scraper {
+func NewTopSQLScraper(ctx context.Context, component topology.Component, store store.Store, tlsConfig *tls.Config) *TopSQLScraper {
 	ctx, cancel := context.WithCancel(ctx)
 
-	return &Scraper{
+	return &TopSQLScraper{
 		ctx:       ctx,
 		cancel:    cancel,
 		tlsConfig: tlsConfig,
@@ -43,7 +44,7 @@ func NewScraper(ctx context.Context, component topology.Component, store store.S
 	}
 }
 
-func (s *Scraper) IsDown() bool {
+func (s *TopSQLScraper) IsDown() bool {
 	select {
 	case <-s.ctx.Done():
 		return true
@@ -52,11 +53,11 @@ func (s *Scraper) IsDown() bool {
 	}
 }
 
-func (s *Scraper) Close() {
+func (s *TopSQLScraper) Close() {
 	s.cancel()
 }
 
-func (s *Scraper) Run() {
+func (s *TopSQLScraper) Run() {
 	log.Info("starting to scrape top SQL from the component", zap.Any("component", s.component))
 	defer func() {
 		s.cancel()
@@ -73,7 +74,7 @@ func (s *Scraper) Run() {
 	}
 }
 
-func (s *Scraper) scrapeTiDB() {
+func (s *TopSQLScraper) scrapeTiDB() {
 	addr := fmt.Sprintf("%s:%d", s.component.IP, s.component.StatusPort)
 	bo := newBackoffScrape(s.ctx, s.tlsConfig, addr, s.component)
 	defer bo.close()
@@ -109,7 +110,7 @@ func (s *Scraper) scrapeTiDB() {
 	}
 }
 
-func (s *Scraper) scrapeTiKV() {
+func (s *TopSQLScraper) scrapeTiKV() {
 	addr := fmt.Sprintf("%s:%d", s.component.IP, s.component.Port)
 	bo := newBackoffScrape(s.ctx, s.tlsConfig, addr, s.component)
 	defer bo.close()

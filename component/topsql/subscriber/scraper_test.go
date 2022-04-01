@@ -56,7 +56,7 @@ func testScraperTiDBBasic(t *testing.T, serverTLS *tls.Config, clientTLS *tls.Co
 		IP:         ip,
 		StatusPort: port,
 	}
-	scraper := subscriber.NewScraper(context.Background(), component, store, clientTLS)
+	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, clientTLS)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -78,7 +78,7 @@ func testScraperTiKVBasic(t *testing.T, serverTLS *tls.Config, clientTLS *tls.Co
 		IP:   ip,
 		Port: port,
 	}
-	scraper := subscriber.NewScraper(context.Background(), component, store, clientTLS)
+	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, clientTLS)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -101,7 +101,7 @@ func TestScraperTiDBRestart(t *testing.T) {
 		IP:         ip,
 		StatusPort: port,
 	}
-	scraper := subscriber.NewScraper(context.Background(), component, store, nil)
+	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, nil)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -135,7 +135,7 @@ func TestScraperTiKVRestart(t *testing.T) {
 		IP:   ip,
 		Port: port,
 	}
-	scraper := subscriber.NewScraper(context.Background(), component, store, nil)
+	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, nil)
 	go scraper.Run()
 	defer scraper.Close()
 
