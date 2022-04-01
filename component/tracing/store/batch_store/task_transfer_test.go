@@ -11,6 +11,8 @@ import (
 )
 
 func TestTaskTransferBasic(t *testing.T) {
+	t.Parallel()
+
 	transfer := NewTaskTransfer(100)
 	defer transfer.Close()
 
@@ -65,6 +67,8 @@ func TestTaskTransferBasic(t *testing.T) {
 }
 
 func TestTaskTransferFull(t *testing.T) {
+	t.Parallel()
+
 	transfer := NewTaskTransfer(4)
 	defer transfer.Close()
 

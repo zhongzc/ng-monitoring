@@ -11,6 +11,8 @@ import (
 )
 
 func TestWriteDBWorkerBasic(t *testing.T) {
+	t.Parallel()
+
 	mockDB := &db.MockDB{}
 	ch := make(chan *db.WriteDBTask, 100)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -32,6 +34,8 @@ func TestWriteDBWorkerBasic(t *testing.T) {
 }
 
 func TestWriteDBWorkerWork(t *testing.T) {
+	t.Parallel()
+
 	mockDB := &db.MockDB{}
 	ch := make(chan *db.WriteDBTask, 100)
 	worker := NewWriteDBWorker(context.Background(), mockDB, ch)

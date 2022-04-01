@@ -9,6 +9,7 @@ import (
 	"github.com/pingcap/ng-monitoring/component/topsql/subscriber"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ func TestDefaultSubscriberBasic(t *testing.T) {
 	varSubscriber := make(pdvariable.Subscriber)
 	topoSubscriber := make(topology.Subscriber)
 	cfgSubscriber := make(config.Subscriber)
-	sub := subscriber.NewDefaultSubscriber(&cfg, topoSubscriber, varSubscriber, cfgSubscriber, store)
+	sub := subscriber.NewSubscriber(&cfg, topoSubscriber, varSubscriber, cfgSubscriber, store)
 	defer sub.Close()
 
 	pubsub := mock.NewMockPubSub()

@@ -17,7 +17,7 @@ import (
 var (
 	defStore      store.Store
 	defQuery      query.Query
-	defSubscriber subscriber.Subscriber
+	defSubscriber *subscriber.Subscriber
 	defService    *service.Service
 )
 
@@ -35,7 +35,7 @@ func Init(
 	}
 
 	defQuery = query.NewDefaultQuery(selectHdr, gj)
-	defSubscriber = subscriber.NewDefaultSubscriber(config, topSub, varSub, cfgSub, defStore)
+	defSubscriber = subscriber.NewSubscriber(config, topSub, varSub, cfgSub, defStore)
 	defService = service.NewService(defQuery)
 
 	return nil

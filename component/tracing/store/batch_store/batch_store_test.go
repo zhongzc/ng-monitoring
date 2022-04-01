@@ -12,6 +12,8 @@ import (
 )
 
 func TestBatchStoreBasic(t *testing.T) {
+	t.Parallel()
+
 	mockDB := &db.MockDB{}
 	store := NewBatchStore(context.Background(), mockDB)
 	defer store.Close()

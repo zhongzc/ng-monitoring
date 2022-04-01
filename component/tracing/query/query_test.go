@@ -10,6 +10,8 @@ import (
 )
 
 func TestQueryBasic(t *testing.T) {
+	t.Parallel()
+
 	query := NewMockQuery(map[uint64]model.Trace{
 		20: {
 			TraceID: 20,

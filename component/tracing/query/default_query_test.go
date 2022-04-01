@@ -11,6 +11,8 @@ import (
 )
 
 func TestDefaultQueryBasic(t *testing.T) {
+	t.Parallel()
+
 	mockDB := &db.MockDB{}
 	query := NewDefaultQuery(mockDB)
 	defer query.Close()

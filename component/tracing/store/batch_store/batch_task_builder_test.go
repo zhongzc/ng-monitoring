@@ -11,6 +11,8 @@ import (
 )
 
 func TestBatchTaskBuilderBasic(t *testing.T) {
+	t.Parallel()
+
 	ch := make(chan *db.WriteDBTask, 10000)
 	builder := NewBatchTaskBuilder(ch)
 
@@ -32,6 +34,8 @@ func TestBatchTaskBuilderBasic(t *testing.T) {
 }
 
 func TestBatchTaskBuilderNotEnough(t *testing.T) {
+	t.Parallel()
+
 	ch := make(chan *db.WriteDBTask, 10000)
 	builder := NewBatchTaskBuilder(ch)
 

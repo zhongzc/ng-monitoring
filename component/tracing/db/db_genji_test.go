@@ -33,6 +33,8 @@ func initGenji(t require.TestingT, path string) *genji.DB {
 }
 
 func TestDBGenjiBasic(t *testing.T) {
+	t.Parallel()
+
 	path, err := ioutil.TempDir("", "test-db-genji-basic-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)

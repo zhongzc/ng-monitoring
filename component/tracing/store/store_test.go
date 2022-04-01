@@ -12,6 +12,8 @@ import (
 )
 
 func TestStoreBasic(t *testing.T) {
+	t.Parallel()
+
 	store := NewMockStore()
 	defer store.Close()
 
@@ -47,6 +49,8 @@ func TestStoreBasic(t *testing.T) {
 }
 
 func TestStoreNil(t *testing.T) {
+	t.Parallel()
+
 	store := NewMockStore()
 	defer store.Close()
 
@@ -57,6 +61,8 @@ func TestStoreNil(t *testing.T) {
 }
 
 func TestStoreMultiParents(t *testing.T) {
+	t.Parallel()
+
 	store := NewMockStore()
 	defer store.Close()
 
@@ -99,6 +105,8 @@ func TestStoreMultiParents(t *testing.T) {
 }
 
 func TestStoreSameTraceIDTwice(t *testing.T) {
+	t.Parallel()
+
 	store := NewMockStore()
 	defer store.Close()
 
