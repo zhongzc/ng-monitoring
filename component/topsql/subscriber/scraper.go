@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/ng-monitoring/component/subscriber"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/store"
 	"github.com/pingcap/ng-monitoring/utils"
@@ -24,7 +25,7 @@ var (
 	dialTimeout = 5 * time.Second
 )
 
-type TopSQLScraper struct {
+type Scraper struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	tlsConfig *tls.Config
@@ -32,10 +33,10 @@ type TopSQLScraper struct {
 	store     store.Store
 }
 
-func NewTopSQLScraper(ctx context.Context, component topology.Component, store store.Store, tlsConfig *tls.Config) *TopSQLScraper {
+func NewScraper(ctx context.Context, component topology.Component, store store.Store, tlsConfig *tls.Config) *Scraper {
 	ctx, cancel := context.WithCancel(ctx)
 
-	return &TopSQLScraper{
+	return &Scraper{
 		ctx:       ctx,
 		cancel:    cancel,
 		tlsConfig: tlsConfig,
@@ -44,7 +45,9 @@ func NewTopSQLScraper(ctx context.Context, component topology.Component, store s
 	}
 }
 
-func (s *TopSQLScraper) IsDown() bool {
+var _ subscriber.Scraper = &Scraper{}
+
+func (s *Scraper) IsDown() bool {
 	select {
 	case <-s.ctx.Done():
 		return true
@@ -53,11 +56,11 @@ func (s *TopSQLScraper) IsDown() bool {
 	}
 }
 
-func (s *TopSQLScraper) Close() {
+func (s *Scraper) Close() {
 	s.cancel()
 }
 
-func (s *TopSQLScraper) Run() {
+func (s *Scraper) Run() {
 	log.Info("starting to scrape top SQL from the component", zap.Any("component", s.component))
 	defer func() {
 		s.cancel()
@@ -74,7 +77,7 @@ func (s *TopSQLScraper) Run() {
 	}
 }
 
-func (s *TopSQLScraper) scrapeTiDB() {
+func (s *Scraper) scrapeTiDB() {
 	addr := fmt.Sprintf("%s:%d", s.component.IP, s.component.StatusPort)
 	bo := newBackoffScrape(s.ctx, s.tlsConfig, addr, s.component)
 	defer bo.close()
@@ -110,7 +113,7 @@ func (s *TopSQLScraper) scrapeTiDB() {
 	}
 }
 
-func (s *TopSQLScraper) scrapeTiKV() {
+func (s *Scraper) scrapeTiKV() {
 	addr := fmt.Sprintf("%s:%d", s.component.IP, s.component.Port)
 	bo := newBackoffScrape(s.ctx, s.tlsConfig, addr, s.component)
 	defer bo.close()

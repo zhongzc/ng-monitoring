@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	rua "github.com/pingcap/kvproto/pkg/resource_usage_agent"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/mock"
 	"github.com/pingcap/ng-monitoring/component/topsql/subscriber"
 	"github.com/pingcap/ng-monitoring/utils/testutil"
+
+	rua "github.com/pingcap/kvproto/pkg/resource_usage_agent"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +57,7 @@ func testScraperTiDBBasic(t *testing.T, serverTLS *tls.Config, clientTLS *tls.Co
 		IP:         ip,
 		StatusPort: port,
 	}
-	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, clientTLS)
+	scraper := subscriber.NewScraper(context.Background(), component, store, clientTLS)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -78,7 +79,7 @@ func testScraperTiKVBasic(t *testing.T, serverTLS *tls.Config, clientTLS *tls.Co
 		IP:   ip,
 		Port: port,
 	}
-	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, clientTLS)
+	scraper := subscriber.NewScraper(context.Background(), component, store, clientTLS)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -101,7 +102,7 @@ func TestScraperTiDBRestart(t *testing.T) {
 		IP:         ip,
 		StatusPort: port,
 	}
-	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, nil)
+	scraper := subscriber.NewScraper(context.Background(), component, store, nil)
 	go scraper.Run()
 	defer scraper.Close()
 
@@ -135,7 +136,7 @@ func TestScraperTiKVRestart(t *testing.T) {
 		IP:   ip,
 		Port: port,
 	}
-	scraper := subscriber.NewTopSQLScraper(context.Background(), component, store, nil)
+	scraper := subscriber.NewScraper(context.Background(), component, store, nil)
 	go scraper.Run()
 	defer scraper.Close()
 

@@ -8,10 +8,18 @@ import (
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
 )
 
+type SubscribeController interface {
+	ScraperFactory
+
+	Name() string
+	IsEnabled() bool
+	UpdatePDVariable(pdvariable.PDVariable)
+	UpdateConfig(config.Config)
+	UpdateTopology([]topology.Component)
+}
+
 type ScraperFactory interface {
 	NewScraper(ctx context.Context, component topology.Component) Scraper
-	UpdateConfig(variable pdvariable.PDVariable, config *config.Config)
-	IsEnabled() bool
 }
 
 type Scraper interface {
