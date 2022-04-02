@@ -61,10 +61,10 @@ func (s *Scraper) Close() {
 }
 
 func (s *Scraper) Run() {
-	log.Info("starting to scrape top SQL from the component", zap.Any("component", s.component))
+	log.Info("starting to scrape Top SQL from the component", zap.Any("component", s.component))
 	defer func() {
 		s.cancel()
-		log.Info("stop scraping top SQL from the component", zap.Any("component", s.component))
+		log.Info("stop scraping Top SQL from the component", zap.Any("component", s.component))
 	}()
 
 	switch s.component.Name {
@@ -91,7 +91,7 @@ func (s *Scraper) scrapeTiDB() {
 		if r := record.GetRecord(); r != nil {
 			err := s.store.TopSQLRecord(addr, topology.ComponentTiDB, r)
 			if err != nil {
-				log.Warn("failed to store top SQL records", zap.Error(err))
+				log.Warn("failed to store Top SQL records", zap.Error(err))
 			}
 			continue
 		}

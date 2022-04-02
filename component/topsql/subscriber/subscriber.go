@@ -54,38 +54,38 @@ func NewSubscriberController(store store.Store) *SubscriberController {
 
 var _ subscriber.SubscribeController = &SubscriberController{}
 
-func (tmc *SubscriberController) NewScraper(ctx context.Context, component topology.Component) subscriber.Scraper {
-	return NewScraper(ctx, component, tmc.store, tmc.config.Security.GetTLSConfig())
+func (sc *SubscriberController) NewScraper(ctx context.Context, component topology.Component) subscriber.Scraper {
+	return NewScraper(ctx, component, sc.store, sc.config.Security.GetTLSConfig())
 }
 
-func (tmc *SubscriberController) Name() string {
+func (sc *SubscriberController) Name() string {
 	return "Top SQL"
 }
 
-func (tmc *SubscriberController) IsEnabled() bool {
-	return tmc.variable.EnableTopSQL
+func (sc *SubscriberController) IsEnabled() bool {
+	return sc.variable.EnableTopSQL
 }
 
-func (tmc *SubscriberController) UpdatePDVariable(variable pdvariable.PDVariable) {
-	tmc.variable = &variable
+func (sc *SubscriberController) UpdatePDVariable(variable pdvariable.PDVariable) {
+	sc.variable = &variable
 }
 
-func (tmc *SubscriberController) UpdateConfig(cfg config.Config) {
-	tmc.config = &cfg
+func (sc *SubscriberController) UpdateConfig(cfg config.Config) {
+	sc.config = &cfg
 }
 
-func (tmc *SubscriberController) UpdateTopology(components []topology.Component) {
-	tmc.components = components
+func (sc *SubscriberController) UpdateTopology(components []topology.Component) {
+	sc.components = components
 
-	if tmc.variable.EnableTopSQL {
-		if err := tmc.storeTopology(); err != nil {
+	if sc.variable.EnableTopSQL {
+		if err := sc.storeTopology(); err != nil {
 			log.Warn("failed to store topology", zap.Error(err))
 		}
 	}
 }
 
-func (tmc *SubscriberController) storeTopology() error {
-	if len(tmc.components) == 0 {
+func (sc *SubscriberController) storeTopology() error {
+	if len(sc.components) == 0 {
 		return nil
 	}
 
@@ -93,7 +93,7 @@ func (tmc *SubscriberController) storeTopology() error {
 	defer instancesItemSliceP.Put(items)
 
 	now := time.Now().Unix()
-	for _, com := range tmc.components {
+	for _, com := range sc.components {
 		switch com.Name {
 		case topology.ComponentTiDB:
 			*items = append(*items, store.InstanceItem{
@@ -109,5 +109,5 @@ func (tmc *SubscriberController) storeTopology() error {
 			})
 		}
 	}
-	return tmc.store.Instances(*items)
+	return sc.store.Instances(*items)
 }
