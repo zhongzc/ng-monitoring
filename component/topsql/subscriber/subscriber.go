@@ -19,7 +19,6 @@ type Subscriber struct {
 }
 
 func NewSubscriber(
-	cfg *config.Config,
 	topoSubscriber topology.Subscriber,
 	varSubscriber pdvariable.Subscriber,
 	cfgSubscriber config.Subscriber,
@@ -31,7 +30,7 @@ func NewSubscriber(
 	wg.Add(1)
 	go utils.GoWithRecovery(func() {
 		defer wg.Done()
-		sm := NewManager(ctx, wg, cfg, varSubscriber, topoSubscriber, cfgSubscriber, store)
+		sm := NewManager(ctx, wg, varSubscriber, topoSubscriber, cfgSubscriber, store)
 		sm.Run()
 	}, nil)
 
