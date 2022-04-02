@@ -74,7 +74,7 @@ func TestSubscriberBasic(t *testing.T) {
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}}
-	ts.topoSubscriber <- topo
+	ts.topoSubscriber <- topoGetter(topo)
 	ts.checkTiDBScrape(t)
 
 	topo = append(topo, topology.Component{
@@ -82,7 +82,7 @@ func TestSubscriberBasic(t *testing.T) {
 		IP:   ts.ip,
 		Port: ts.port,
 	})
-	ts.topoSubscriber <- topo
+	ts.topoSubscriber <- topoGetter(topo)
 	ts.checkTiKVScrape(t)
 }
 
@@ -97,7 +97,7 @@ func TestSubscriberEnableAfterTopoIsReady(t *testing.T) {
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}}
-	ts.topoSubscriber <- topo
+	ts.topoSubscriber <- topoGetter(topo)
 	ts.varSubscriber <- enable
 	ts.checkTiDBScrape(t)
 }
@@ -118,7 +118,7 @@ func TestSubscriberTopoChange(t *testing.T) {
 		IP:   ts.ip,
 		Port: ts.port,
 	}}
-	ts.topoSubscriber <- topo
+	ts.topoSubscriber <- topoGetter(topo)
 
 	ts.checkTiDBScrape(t)
 	ts.checkTiKVScrape(t)
@@ -139,7 +139,7 @@ func TestSubscriberTopoChange(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	})
-	ts.topoSubscriber <- topo[1:]
+	ts.topoSubscriber <- topoGetter(topo[1:])
 }
 
 func TestSubscriberDisable(t *testing.T) {
@@ -154,7 +154,7 @@ func TestSubscriberDisable(t *testing.T) {
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}}
-	ts.topoSubscriber <- topo
+	ts.topoSubscriber <- topoGetter(topo)
 	ts.checkTiDBScrape(t)
 
 	// disable
@@ -182,4 +182,10 @@ func enable() pdvariable.PDVariable {
 
 func disable() pdvariable.PDVariable {
 	return pdvariable.PDVariable{EnableTopSQL: false}
+}
+
+func topoGetter(topo []topology.Component) topology.GetLatestTopology {
+	return func() []topology.Component {
+		return topo
+	}
 }

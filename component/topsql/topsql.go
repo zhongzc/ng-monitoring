@@ -3,15 +3,17 @@ package topsql
 import (
 	"net/http"
 
-	"github.com/genjidb/genji"
-	"github.com/gin-gonic/gin"
+	"github.com/pingcap/ng-monitoring/component/subscriber"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/query"
 	"github.com/pingcap/ng-monitoring/component/topsql/service"
 	"github.com/pingcap/ng-monitoring/component/topsql/store"
-	"github.com/pingcap/ng-monitoring/component/topsql/subscriber"
+	tssubscriber "github.com/pingcap/ng-monitoring/component/topsql/subscriber"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
+
+	"github.com/genjidb/genji"
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -34,7 +36,7 @@ func Init(
 	}
 
 	defQuery = query.NewDefaultQuery(selectHdr, gj)
-	defSubscriber = subscriber.NewSubscriber(topSub, varSub, cfgSub, defStore)
+	defSubscriber = tssubscriber.NewSubscriber(topSub, varSub, cfgSub, defStore)
 	defService = service.NewService(defQuery)
 
 	return nil

@@ -14,12 +14,11 @@ import (
 )
 
 type Manager struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     *sync.WaitGroup
+	ctx context.Context
+	wg  *sync.WaitGroup
 
-	enabled    bool
-	components []topology.Component
+	prevEnabled bool
+	components  []topology.Component
 
 	scrapers map[topology.Component]Scraper
 
@@ -38,11 +37,9 @@ func NewManager(
 	cfgSubscriber config.Subscriber,
 	subscribeController SubscribeController,
 ) *Manager {
-	ctx, cancel := context.WithCancel(ctx)
 	return &Manager{
-		ctx:    ctx,
-		cancel: cancel,
-		wg:     wg,
+		ctx: ctx,
+		wg:  wg,
 
 		scrapers: make(map[topology.Component]Scraper),
 
@@ -55,12 +52,7 @@ func NewManager(
 }
 
 func (m *Manager) Run() {
-	defer func() {
-		for _, v := range m.scrapers {
-			v.Close()
-		}
-		m.scrapers = nil
-	}()
+	defer m.clearScrapers()
 
 	for {
 		select {
@@ -68,32 +60,29 @@ func (m *Manager) Run() {
 			m.subscribeController.UpdateConfig(getCfg())
 		case getVars := <-m.varSubscriber:
 			m.subscribeController.UpdatePDVariable(getVars())
-		case getComs := <-m.topoSubscriber:
-			m.components = getComs
-			m.subscribeController.UpdateTopology(getComs)
+		case getTopology := <-m.topoSubscriber:
+			m.components = getTopology()
+			m.subscribeController.UpdateTopology(getTopology())
 		case <-m.ctx.Done():
 			return
 		}
 
-		if m.subscribeController.IsEnabled() && !m.enabled {
-			log.Info(fmt.Sprintf("%s is enabled", m.subscribeController.Name()))
+		curEnabled := m.subscribeController.IsEnabled()
+		if curEnabled != m.prevEnabled { // switch
+			action := "off"
+			if curEnabled {
+				action = "on"
+			}
+			log.Info(fmt.Sprintf("%s is turned %s", m.subscribeController.Name(), action))
 		}
-		if !m.subscribeController.IsEnabled() && m.enabled {
-			log.Info(fmt.Sprintf("%s is disabled", m.subscribeController.Name()))
-		}
+		m.prevEnabled = curEnabled
 
-		m.enabled = m.subscribeController.IsEnabled()
-
-		if m.enabled {
+		if curEnabled {
 			m.updateScrapers()
 		} else {
 			m.clearScrapers()
 		}
 	}
-}
-
-func (m *Manager) Close() {
-	m.cancel()
 }
 
 func (m *Manager) updateScrapers() {

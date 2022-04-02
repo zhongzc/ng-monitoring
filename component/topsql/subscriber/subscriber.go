@@ -3,14 +3,16 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/log"
+	"time"
+
 	"github.com/pingcap/ng-monitoring/component/subscriber"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/store"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
+
+	"github.com/pingcap/log"
 	"go.uber.org/zap"
-	"time"
 )
 
 var (
