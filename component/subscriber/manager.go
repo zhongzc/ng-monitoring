@@ -3,6 +3,7 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/pingcap/ng-monitoring/component/topology"
@@ -47,6 +48,7 @@ func NewManager(
 		topoSubscriber: topoSubscriber,
 		cfgSubscriber:  cfgSubscriber,
 
+		prevEnabled:         subscribeController.IsEnabled(),
 		subscribeController: subscribeController,
 	}
 }
@@ -88,7 +90,7 @@ func (m *Manager) Run() {
 func (m *Manager) updateScrapers() {
 	// clean up closed scrapers
 	for component, scraper := range m.scrapers {
-		if scraper.IsDown() {
+		if !isNil(scraper) && scraper.IsDown() {
 			scraper.Close()
 			delete(m.scrapers, component)
 		}
@@ -98,7 +100,10 @@ func (m *Manager) updateScrapers() {
 
 	// clean up stale scrapers
 	for i := range out {
-		m.scrapers[out[i]].Close()
+		scraper := m.scrapers[out[i]]
+		if !isNil(scraper) {
+			scraper.Close()
+		}
 		delete(m.scrapers, out[i])
 	}
 
@@ -107,11 +112,13 @@ func (m *Manager) updateScrapers() {
 		scraper := m.subscribeController.NewScraper(m.ctx, in[i])
 		m.scrapers[in[i]] = scraper
 
-		m.wg.Add(1)
-		go utils.GoWithRecovery(func() {
-			defer m.wg.Done()
-			scraper.Run()
-		}, nil)
+		if !isNil(scraper) {
+			m.wg.Add(1)
+			go utils.GoWithRecovery(func() {
+				defer m.wg.Done()
+				scraper.Run()
+			}, nil)
+		}
 	}
 }
 
@@ -120,13 +127,6 @@ func (m *Manager) getTopoChange() (in, out []topology.Component) {
 
 	for i := range m.components {
 		component := m.components[i]
-		switch component.Name {
-		case topology.ComponentTiDB:
-		case topology.ComponentTiKV:
-		default:
-			continue
-		}
-
 		curMap[component] = struct{}{}
 		if _, contains := m.scrapers[component]; !contains {
 			in = append(in, component)
@@ -144,7 +144,20 @@ func (m *Manager) getTopoChange() (in, out []topology.Component) {
 
 func (m *Manager) clearScrapers() {
 	for component, scraper := range m.scrapers {
-		scraper.Close()
+		if !isNil(scraper) {
+			scraper.Close()
+		}
 		delete(m.scrapers, component)
 	}
+}
+
+func isNil(scraper Scraper) bool {
+	if scraper == nil {
+		return true
+	}
+	switch reflect.TypeOf(scraper).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(scraper).IsNil()
+	}
+	return false
 }

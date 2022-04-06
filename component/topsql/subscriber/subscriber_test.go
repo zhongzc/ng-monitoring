@@ -70,15 +70,19 @@ func TestSubscriberBasic(t *testing.T) {
 
 	ts.varSubscriber <- enable
 	topo := []topology.Component{{
-		Name:       "tidb",
+		Name:       topology.ComponentTiDB,
 		IP:         ts.ip,
 		StatusPort: ts.port,
+	}, {
+		Name: topology.ComponentPD,
+	}, {
+		Name: topology.ComponentTiFlash,
 	}}
 	ts.topoSubscriber <- topoGetter(topo)
 	ts.checkTiDBScrape(t)
 
 	topo = append(topo, topology.Component{
-		Name: "tikv",
+		Name: topology.ComponentTiKV,
 		IP:   ts.ip,
 		Port: ts.port,
 	})
@@ -93,7 +97,7 @@ func TestSubscriberEnableAfterTopoIsReady(t *testing.T) {
 	defer ts.Close()
 
 	topo := []topology.Component{{
-		Name:       "tidb",
+		Name:       topology.ComponentTiDB,
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}}
@@ -110,11 +114,11 @@ func TestSubscriberTopoChange(t *testing.T) {
 
 	ts.varSubscriber <- enable
 	topo := []topology.Component{{
-		Name:       "tidb",
+		Name:       topology.ComponentTiDB,
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}, {
-		Name: "tikv",
+		Name: topology.ComponentTiKV,
 		IP:   ts.ip,
 		Port: ts.port,
 	}}
@@ -150,7 +154,7 @@ func TestSubscriberDisable(t *testing.T) {
 
 	ts.varSubscriber <- enable
 	topo := []topology.Component{{
-		Name:       "tidb",
+		Name:       topology.ComponentTiDB,
 		IP:         ts.ip,
 		StatusPort: ts.port,
 	}}

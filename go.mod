@@ -6,13 +6,14 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/VictoriaMetrics/VictoriaMetrics v1.65.0
 	github.com/dgraph-io/badger/v3 v3.2103.1
-	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/emirpasic/gods v1.12.0
 	github.com/genjidb/genji v0.13.0
 	github.com/genjidb/genji/engine/badgerengine v0.13.0
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.7.4
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/goccy/go-graphviz v0.0.9
+	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/pprof v0.0.0-20211008130755-947d60d73cc0
 	github.com/json-iterator/go v1.1.12 // indirect

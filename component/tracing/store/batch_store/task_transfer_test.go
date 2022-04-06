@@ -98,7 +98,7 @@ func TestTaskTransferFull(t *testing.T) {
 	require.Error(t, err)
 
 	// receive one
-	_ = <-transfer.Receiver()
+	<-transfer.Receiver()
 
 	// not full
 	err = transfer.TraceRecord("tidb:10080", "tidb", now, record)

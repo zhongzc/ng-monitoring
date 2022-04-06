@@ -34,14 +34,18 @@ type Scraper struct {
 }
 
 func NewScraper(ctx context.Context, component topology.Component, store store.Store, tlsConfig *tls.Config) *Scraper {
-	ctx, cancel := context.WithCancel(ctx)
-
-	return &Scraper{
-		ctx:       ctx,
-		cancel:    cancel,
-		tlsConfig: tlsConfig,
-		component: component,
-		store:     store,
+	switch component.Name {
+	case topology.ComponentTiDB, topology.ComponentTiKV:
+		ctx, cancel := context.WithCancel(ctx)
+		return &Scraper{
+			ctx:       ctx,
+			cancel:    cancel,
+			tlsConfig: tlsConfig,
+			component: component,
+			store:     store,
+		}
+	default:
+		return nil
 	}
 }
 
