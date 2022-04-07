@@ -1,10 +1,9 @@
-package subscriber
+package subscriber_test
 
 import (
-	"context"
-	"sync"
 	"testing"
 
+	"github.com/pingcap/ng-monitoring/component/subscriber"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
@@ -13,49 +12,33 @@ import (
 )
 
 type testSuite struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-
-	manager *Manager
-
+	subscriber     *subscriber.Subscriber
 	varSubscriber  pdvariable.Subscriber
 	topoSubscriber topology.Subscriber
 	cfgSubscriber  config.Subscriber
 }
 
-func newTestSuite(controller SubscribeController) *testSuite {
-	ts := &testSuite{}
-
-	ts.varSubscriber = make(pdvariable.Subscriber)
-	ts.topoSubscriber = make(topology.Subscriber)
-	ts.cfgSubscriber = make(config.Subscriber)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	ts.ctx = ctx
-	ts.cancel = cancel
-	ts.manager = NewManager(ts.ctx, &ts.wg, ts.varSubscriber, ts.topoSubscriber, ts.cfgSubscriber, controller)
-
-	ts.wg.Add(1)
-	go func() {
-		defer ts.wg.Done()
-		ts.manager.Run()
-	}()
+func newTestSuite(controller subscriber.SubscribeController) *testSuite {
+	ts := &testSuite{
+		varSubscriber:  make(pdvariable.Subscriber),
+		topoSubscriber: make(topology.Subscriber),
+		cfgSubscriber:  make(config.Subscriber),
+	}
+	ts.subscriber = subscriber.NewSubscriber(ts.topoSubscriber, ts.varSubscriber, ts.cfgSubscriber, controller)
 	return ts
 }
 
 func (ts *testSuite) close() {
-	ts.cancel()
-	ts.wg.Wait()
+	ts.subscriber.Close()
 }
 
-func TestManagerBasic(t *testing.T) {
+func TestSubscriberBasic(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -70,7 +53,7 @@ func TestManagerBasic(t *testing.T) {
 
 	// always enabled
 	controller.EXPECT().IsEnabled().Return(true).AnyTimes()
-	controller.EXPECT().Name().Return("test-manager-basic").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-basic").AnyTimes()
 
 	c := controller.EXPECT().UpdatePDVariable(gomock.Eq(pdvariable.PDVariable{})).Times(1)
 	c = controller.EXPECT().UpdateConfig(gomock.Eq(config.Config{})).Times(1).After(c)
@@ -100,13 +83,13 @@ func TestManagerBasic(t *testing.T) {
 	routine(controller)
 }
 
-func TestManagerFixedComponent(t *testing.T) {
+func TestSubscriberFixedComponent(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -119,7 +102,7 @@ func TestManagerFixedComponent(t *testing.T) {
 
 	// always enabled
 	controller.EXPECT().IsEnabled().Return(true).AnyTimes()
-	controller.EXPECT().Name().Return("test-manager-fixed-component").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-fixed-component").AnyTimes()
 
 	// topology changed: a `foo` component is found
 	// * related scraper is created
@@ -139,13 +122,13 @@ func TestManagerFixedComponent(t *testing.T) {
 	routine(controller)
 }
 
-func TestManagerAddComponent(t *testing.T) {
+func TestSubscriberAddComponent(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -158,7 +141,7 @@ func TestManagerAddComponent(t *testing.T) {
 
 	// always enabled
 	controller.EXPECT().IsEnabled().Return(true).AnyTimes()
-	controller.EXPECT().Name().Return("test-manager-add-component").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-add-component").AnyTimes()
 
 	// topology changed: a `foo` component is found
 	// * related scraper is created
@@ -178,19 +161,19 @@ func TestManagerAddComponent(t *testing.T) {
 
 	// trigger a config update to see what scrapers are closed finally
 	c = controller.EXPECT().UpdateConfig(gomock.Eq(config.Config{})).Times(1).After(c)
-	c = scraperFoo.EXPECT().Close().Times(1).After(c)
+	scraperFoo.EXPECT().Close().Times(1).After(c)
 	scraperBar.EXPECT().Close().Times(1).After(c)
 
 	routine(controller)
 }
 
-func TestManagerRemoveComponent(t *testing.T) {
+func TestSubscriberRemoveComponent(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -203,7 +186,7 @@ func TestManagerRemoveComponent(t *testing.T) {
 
 	// always enabled
 	controller.EXPECT().IsEnabled().Return(true).AnyTimes()
-	controller.EXPECT().Name().Return("test-manager-remove-component").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-remove-component").AnyTimes()
 
 	// topology changed: a `foo` component is found
 	// * related scraper is created
@@ -224,13 +207,13 @@ func TestManagerRemoveComponent(t *testing.T) {
 	routine(controller)
 }
 
-func TestManagerSwitch(t *testing.T) {
+func TestSubscriberSwitch(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -241,7 +224,7 @@ func TestManagerSwitch(t *testing.T) {
 	}
 
 	controller := NewMockSubscribeController(ctrl)
-	controller.EXPECT().Name().Return("test-manager-switch").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-switch").AnyTimes()
 
 	// enabled at the beginning
 	c := controller.EXPECT().IsEnabled().Return(true).Times(1)
@@ -279,13 +262,13 @@ func TestManagerSwitch(t *testing.T) {
 	routine(controller)
 }
 
-func TestManagerScraperDown(t *testing.T) {
+func TestSubscriberScraperDown(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	routine := func(controller SubscribeController) {
+	routine := func(controller subscriber.SubscribeController) {
 		ts := newTestSuite(controller)
 		defer ts.close()
 
@@ -298,7 +281,7 @@ func TestManagerScraperDown(t *testing.T) {
 
 	// always enabled
 	controller.EXPECT().IsEnabled().Return(true).AnyTimes()
-	controller.EXPECT().Name().Return("test-manager-scraper-down").AnyTimes()
+	controller.EXPECT().Name().Return("test-subscriber-scraper-down").AnyTimes()
 
 	// topology changed: a `foo` component is found
 	// * related scraper is created

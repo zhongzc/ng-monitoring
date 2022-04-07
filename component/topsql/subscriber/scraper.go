@@ -251,7 +251,7 @@ func (bo *backoffScrape) backoffScrape() (record interface{}) {
 
 		bo.conn = conn
 		switch bo.component.Name {
-		case "tidb":
+		case topology.ComponentTiDB:
 			client := tipb.NewTopSQLPubSubClient(conn)
 			bo.client = client
 			stream, err := client.Subscribe(bo.ctx, &tipb.TopSQLSubRequest{})
@@ -268,7 +268,7 @@ func (bo *backoffScrape) backoffScrape() (record interface{}) {
 
 			return true
 
-		case "tikv":
+		case topology.ComponentTiKV:
 			client := resource_usage_agent.NewResourceMeteringPubSubClient(conn)
 			bo.client = client
 			stream, err := client.Subscribe(bo.ctx, &resource_usage_agent.ResourceMeteringRequest{})

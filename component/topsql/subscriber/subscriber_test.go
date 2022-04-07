@@ -9,7 +9,7 @@ import (
 	"github.com/pingcap/ng-monitoring/component/subscriber"
 	"github.com/pingcap/ng-monitoring/component/topology"
 	"github.com/pingcap/ng-monitoring/component/topsql/mock"
-	tssubscriber "github.com/pingcap/ng-monitoring/component/topsql/subscriber"
+	sub "github.com/pingcap/ng-monitoring/component/topsql/subscriber"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
 
@@ -39,7 +39,7 @@ func newTestSuite() *testSuite {
 	ts.cfgSubscriber = make(config.Subscriber)
 	ts.store = mock.NewMemStore()
 
-	controller := tssubscriber.NewSubscriberController(ts.store)
+	controller := sub.NewSubscriberController(ts.store)
 	ts.subscriber = subscriber.NewSubscriber(ts.topoSubscriber, ts.varSubscriber, ts.cfgSubscriber, controller)
 
 	ts.service = mock.NewMockPubSub()

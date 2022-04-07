@@ -8,7 +8,7 @@ import (
 	"github.com/pingcap/ng-monitoring/component/topsql/query"
 	"github.com/pingcap/ng-monitoring/component/topsql/service"
 	"github.com/pingcap/ng-monitoring/component/topsql/store"
-	tssubscriber "github.com/pingcap/ng-monitoring/component/topsql/subscriber"
+	sub "github.com/pingcap/ng-monitoring/component/topsql/subscriber"
 	"github.com/pingcap/ng-monitoring/config"
 	"github.com/pingcap/ng-monitoring/config/pdvariable"
 
@@ -36,7 +36,7 @@ func Init(
 	}
 
 	defQuery = query.NewDefaultQuery(selectHdr, gj)
-	defSubscriber = tssubscriber.NewSubscriber(topSub, varSub, cfgSub, defStore)
+	defSubscriber = sub.NewSubscriber(topSub, varSub, cfgSub, defStore)
 	defService = service.NewService(defQuery)
 
 	return nil
