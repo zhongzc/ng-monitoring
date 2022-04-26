@@ -32,6 +32,11 @@ func Init(do *domain.Domain) {
 	go utils.GoWithRecovery(loader.start, nil)
 }
 
+func InitForTest(variable PDVariable) {
+	loader = &variableLoader{do: nil}
+	loader.variable.Store(variable)
+}
+
 type PDVariable struct {
 	EnableTopSQL bool
 }

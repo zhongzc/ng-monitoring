@@ -5,6 +5,8 @@ import (
 	"fmt"
 	stdlog "log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/pingcap/ng-monitoring/component/conprof"
 	"github.com/pingcap/ng-monitoring/component/domain"
@@ -42,6 +44,7 @@ var (
 	storagePath      = pflag.String(nmStoragePath, "", "Storage path of ng monitoring server")
 	configPath       = pflag.String(nmConfig, "", "config file path")
 	advertiseAddress = pflag.String(nmAdvertiseAddress, "", "ngm server advertise IP:PORT")
+	mockTargets      = pflag.StringSlice("mock-targets", nil, "mock targets")
 )
 
 func main() {
@@ -73,17 +76,34 @@ func main() {
 		stdlog.Fatalf("Failed to load config from storage, err: %s", err.Error())
 	}
 
-	do := domain.NewDomain()
-	defer do.Close()
+	if len(*mockTargets) > 0 {
+		targets := make([]topology.Component, 0, len(*mockTargets))
+		for _, target := range *mockTargets {
+			ss := strings.Split(target, ":")
+			ip := ss[0]
+			port, _ := strconv.ParseUint(ss[1], 10, 64)
+			targets = append(targets, topology.Component{
+				Name:       "tidb",
+				IP:         ip,
+				Port:       uint(port),
+				StatusPort: uint(port),
+			})
+		}
+		topology.InitForTest(targets)
+		pdvariable.InitForTest(pdvariable.PDVariable{EnableTopSQL: true})
+	} else {
+		do := domain.NewDomain()
+		defer do.Close()
 
-	err = topology.Init(do)
-	if err != nil {
-		log.Fatal("Failed to initialize topology", zap.Error(err))
+		err = topology.Init(do)
+		if err != nil {
+			log.Fatal("Failed to initialize topology", zap.Error(err))
+		}
+		defer topology.Stop()
+
+		pdvariable.Init(do)
+		defer pdvariable.Stop()
 	}
-	defer topology.Stop()
-
-	pdvariable.Init(do)
-	defer pdvariable.Stop()
 
 	err = topsql.Init(config.Subscribe(), document.Get(), timeseries.InsertHandler, timeseries.SelectHandler, topology.Subscribe(), pdvariable.Subscribe())
 	if err != nil {
