@@ -54,7 +54,7 @@ func (s *TopologySyncer) Start() {
 }
 
 func (s *TopologySyncer) topologyInfoKeeperLoop() {
-	err := syncer.newTopologySessionAndStoreServerInfo()
+	err := s.newTopologySessionAndStoreServerInfo()
 	if err != nil {
 		log.Error("store topology into etcd failed", zap.Error(err))
 	}
