@@ -3,10 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tipb/go-tipb"
-	"github.com/soheilhy/cmux"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 	stdlog "log"
 	"math/rand"
 	"net"
@@ -30,8 +26,12 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
 	"github.com/pingcap/log"
+	"github.com/pingcap/tipb/go-tipb"
+	"github.com/soheilhy/cmux"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -52,7 +52,7 @@ var (
 	storagePath       = pflag.String(nmStoragePath, "", "Storage path of ng monitoring server")
 	configPath        = pflag.String(nmConfig, "", "config file path")
 	advertiseAddress  = pflag.String(nmAdvertiseAddress, "", "ngm server advertise IP:PORT")
-	mockTargets       = pflag.StringSlice("mock-targets", nil, "mock targets")
+	mockTargets       = pflag.StringSlice("mock-targets", nil, "mock targets, e.g. --mock-targets 127.0.0.1:10000-10050,127.0.0.1:10086")
 	mockWithDashboard = pflag.Bool("mock-with-dashboard", false, "mock with dashboard")
 	mocker            = pflag.Bool("mocker", false, "run as mocker")
 )
@@ -62,8 +62,13 @@ func main() {
 	// For isolation and avoiding conflict, we use another command line parser package `pflag`.
 	pflag.Parse()
 
+	parsedTargets := parseTargets(*mockTargets)
+	if len(parsedTargets) > 0 {
+		log.Info("mock targets", zap.Strings("targets", parsedTargets))
+	}
+
 	if *mocker {
-		runMockers(*mockTargets)
+		runMockers(parsedTargets)
 		procutil.WaitForSigterm()
 		return
 	}
@@ -92,9 +97,9 @@ func main() {
 		stdlog.Fatalf("Failed to load config from storage, err: %s", err.Error())
 	}
 
-	if len(*mockTargets) > 0 {
-		targets := make([]topology.Component, 0, len(*mockTargets))
-		for _, target := range *mockTargets {
+	if len(parsedTargets) > 0 {
+		targets := make([]topology.Component, 0, len(parsedTargets))
+		for _, target := range parsedTargets {
 			ss := strings.Split(target, ":")
 			ip := ss[0]
 			port, _ := strconv.ParseUint(ss[1], 10, 64)
@@ -150,6 +155,26 @@ func main() {
 	go config.ReloadRoutine(ctx, *configPath, cfg)
 	sig := procutil.WaitForSigterm()
 	log.Info("received signal", zap.String("sig", sig.String()))
+}
+
+func parseTargets(raw []string) (res []string) {
+	for _, target := range raw {
+		ss := strings.Split(target, "-")
+		if len(ss) == 1 {
+			res = append(res, target)
+			continue
+		}
+
+		firstIpPort := strings.Split(ss[0], ":")
+		firstIp := firstIpPort[0]
+		firstPort, _ := strconv.ParseUint(firstIpPort[1], 10, 64)
+		lastPort, _ := strconv.ParseUint(ss[1], 10, 64)
+
+		for i := firstPort; i <= lastPort; i++ {
+			res = append(res, fmt.Sprintf("%s:%d", firstIp, i))
+		}
+	}
+	return
 }
 
 func overrideConfig(config *config.Config) {
